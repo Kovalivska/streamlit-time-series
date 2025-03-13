@@ -17,7 +17,6 @@ st.title("Time Series Forecasting with XGBoost")
 st.write("📌 **This Streamlit application demonstrates a Time Series Forecasting model using XGBoost. Users can upload a CSV file with time-series data, preprocess it, train an XGBoost model, and generate predictions.**")  
 st.write("⚠️ **Note:** This process should be **supervised and adjusted by a specialist**. The predictions may not be perfect, as time series modeling often requires interactive fine-tuning and the use of more advanced techniques for optimal results.")
 
-
 # File Format Requirements
 st.write("### File Upload Requirements")
 st.markdown("""
@@ -31,13 +30,13 @@ st.markdown("""
   - It should not contain categorical or non-numeric features.
   - The `date` column should be **properly formatted** and **free from inconsistencies**.
 """)
+
 # User input for target variable
 target_variable = st.text_input("Enter the name of your target variable:", value="unit_sales")
 
 # File Upload Section
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 st.write("🔹 **You can find a sample test dataset in my repository:** [GitHub Repository](<https://github.com/Kovalivska/streamlit-time-series/tree/main/Input>)")
-
 
 def preprocess_data(df, target_variable):
     """
@@ -161,11 +160,17 @@ def train_model(df):
         best_model = grid_search.best_estimator_
         best_params = grid_search.best_params_
         
+        # Save the model to session state
         st.session_state['model'] = best_model
         st.session_state['best_params'] = best_params
         st.session_state['trained'] = True
         st.session_state['df'] = df
         st.session_state['metrics'] = calculate_metrics(best_model, X_train, X_test, y_train, y_test)
+        
+        # Save the model to disk for download
+        best_model.save_model("trained_model.xgb")  # Save in XGBoost binary format
+        with open("trained_model.pkl", "wb") as f:  # Save in Pickle format
+            pickle.dump(best_model, f)
         
         return best_model
     except Exception as e:
