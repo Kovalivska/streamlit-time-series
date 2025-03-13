@@ -214,10 +214,50 @@ if uploaded_file is not None:
             if st.button("Predict"):
                 model = st.session_state['model']
                 forecast_date = pd.to_datetime(forecast_date)
-                prediction = model.predict(df[['dayofweek', 'month', 'year'] + [f'lag_{lag}' for lag in [1, 7, 14]] + ['rolling_mean_7']].iloc[-1:])
-                
+
+                # Convert selected forecast date to datetime format
+                forecast_features = pd.DataFrame({
+                'dayofweek': [forecast_date.weekday()],  # Extract day of the week
+                'month': [forecast_date.month],  # Extract month
+                'year': [forecast_date.year]  # Extract year
+                })
+
+                # Generate lag features based on the most recent available data
+                # Ensure lag features are correctly aligned with the forecast date
+                for lag in [1, 7, 14]:
+                    lag_date = forecast_date - pd.Timedelta(days=lag)
+
+                    # Check if the lag date exists in the dataset
+                    if lag_date in df['date'].values:
+                        forecast_features[f'lag_{lag}'] = df.loc[df['date'] == lag_date, 'target'].values[0]
+                    else:
+                        forecast_features[f'lag_{lag}'] = np.nan  # If the lag date is missing, fill with NaN
+
+
+                # Compute rolling mean based on available data up to the forecast date
+                historical_data = df[df['date'] < forecast_date].tail(7)  # Take last 7 values before the forecast date
+
+                if len(historical_data) >= 7:
+                    forecast_features['rolling_mean_7'] = historical_data['target'].mean()  # Correct rolling mean calculation
+                else:
+                    forecast_features['rolling_mean_7'] = np.nan  # If insufficient history, fill with NaN
+
+
+                # Drop any NaN values (this should be rare but ensures robustness)
+                forecast_features = forecast_features.dropna(axis=1)
+
+                # Debugging: Show the generated features before prediction
+                st.write("### Debugging: Features Used for Prediction")
+                st.dataframe(forecast_features)
+
+                # Make the prediction using the trained model
+                prediction = model.predict(forecast_features)
+
+                # Display the predicted value
+                st.write(f"Predicted {target_variable} for {forecast_date.date()}: {prediction[0]:.2f}")
+
                 if prediction is not None:
-                    st.write(f"Predicted {target_variable} for {forecast_date.date()}: {prediction[0]:.2f}")
+                    #st.write(f"Predicted {target_variable} for {forecast_date.date()}: {prediction[0]:.2f}")
                     plot_predictions(df, forecast_date, prediction[0], target_variable)
                 else:
                     st.error("Prediction failed. Check input data and try again.")
