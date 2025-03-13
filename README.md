@@ -2,6 +2,44 @@
 
 This repository contains a Streamlit-based application for time series forecasting using XGBoost. It allows users to upload a CSV file, train a model, visualize the results, and make predictions.
 
+### Logic of the Code
+
+This code implements a **Time Series Forecasting** application using **XGBoost** and **Streamlit**. It allows users to upload a CSV file containing time-series data, preprocess the data, train an XGBoost model, and make predictions. Below is a breakdown of the logic:
+
+1. **Data Upload and Preprocessing**:
+   - The app accepts a CSV file with at least two columns: `date` (in `YYYY-MM-DD` format) and a target variable (e.g., `unit_sales`).
+   - The `preprocess_data` function ensures the required columns are present, converts the `date` column to datetime format, and adds time-based features like `dayofweek`, `month`, and `year`.
+   - It also creates lag features (e.g., `lag_1`, `lag_7`, `lag_14`) and a rolling mean (`rolling_mean_7`) to capture temporal patterns in the data.
+
+2. **Model Training**:
+   - The `train_model` function uses **XGBoost** for time-series forecasting.
+   - It splits the data into training and test sets using **TimeSeriesSplit** to preserve the temporal order of the data.
+   - A **GridSearchCV** is employed to find the best hyperparameters for the XGBoost model, optimizing for the lowest mean squared error (MSE).
+   - The best model and its hyperparameters are saved in the Streamlit session state for later use.
+
+3. **Model Evaluation**:
+   - The `calculate_metrics` function computes evaluation metrics such as **RMSE**, **MAE**, and **R² score** for both the training and test datasets.
+   - These metrics are displayed to the user to assess the model's performance.
+
+4. **Prediction and Visualization**:
+   - Users can select a date for forecasting, and the app uses the trained model to predict the target variable for that date.
+   - The `plot_predictions` function visualizes the actual vs predicted values, highlighting the training data, test data, and the predicted value.
+
+5. **Model Download**:
+   - The trained model can be downloaded in two formats: **XGBoost binary format** (`.xgb`) and **Pickle format** (`.pkl`), allowing users to reuse the model outside the app.
+
+6. **Streamlit Interface**:
+   - The app provides an intuitive interface for uploading data, training the model, and making predictions.
+   - It displays processed data samples, model performance metrics, and hyperparameters for transparency.
+
+### Key Features:
+- **Time-Series Specific Preprocessing**: Handles temporal data by adding lag features and rolling statistics.
+- **Hyperparameter Tuning**: Uses GridSearchCV to optimize the XGBoost model.
+- **Interactive Visualization**: Plots the actual vs predicted values for better insights.
+- **Model Export**: Allows users to download the trained model for offline use.
+
+This application is ideal for users who want to perform time-series forecasting with minimal coding effort, leveraging the power of XGBoost and Streamlit's interactive capabilities.
+
 ## Features
 - Upload a dataset with `date` and a target variable column
 - Preprocesses data and adds time-based features
