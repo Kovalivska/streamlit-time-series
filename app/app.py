@@ -14,16 +14,30 @@ sns.set(style="whitegrid")
 
 # Streamlit App Title
 st.title("Time Series Forecasting with XGBoost")
+st.write("📌 **This Streamlit application demonstrates a Time Series Forecasting model using XGBoost. Users can upload a CSV file with time-series data, preprocess it, train an XGBoost model, and generate predictions.**")  
+st.write("⚠️ **Note:** This process should be **supervised and adjusted by a specialist**. The predictions may not be perfect, as time series modeling often requires interactive fine-tuning and the use of more advanced techniques for optimal results.")
+
 
 # File Format Requirements
-st.write("**File Format Requirements:**")
-st.markdown("- The uploaded CSV file should contain at least the following columns:\n  - `date`: The date of the recorded sales (YYYY-MM-DD format).\n  - A target variable column (e.g., `unit_sales`).")
-
+st.write("### File Upload Requirements")
+st.markdown("""
+- **File Format**: The uploaded file must be in **CSV format** (.csv).
+- **Maximum File Size**: Due to Streamlit and GitHub limitations, the file should not exceed **50MB**.
+- **Required Columns**:
+  - `date`: A column with date values in **YYYY-MM-DD** format.
+  - **Target Variable**: A numerical column containing the values to be predicted.
+- **Data Cleaning Requirements**:
+  - The dataset must be **pre-cleaned**, without missing values.
+  - It should not contain categorical or non-numeric features.
+  - The `date` column should be **properly formatted** and **free from inconsistencies**.
+""")
 # User input for target variable
 target_variable = st.text_input("Enter the name of your target variable:", value="unit_sales")
 
 # File Upload Section
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
+st.write("🔹 **You can find a sample test dataset in my repository:** [GitHub Repository](<https://github.com/Kovalivska/streamlit-time-series/tree/main/Input>)")
+
 
 def preprocess_data(df, target_variable):
     """
