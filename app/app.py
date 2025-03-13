@@ -73,6 +73,8 @@ def preprocess_data(df, target_variable):
             df[f'lag_{lag}'] = df['target'].shift(lag)
         
         df['rolling_mean_7'] = df['target'].rolling(window=7, min_periods=1).mean()
+        df['expanding_mean'] = df['target'].expanding().mean()
+
         
         # Drop rows with missing values after creating lags
         df = df.dropna()
@@ -127,7 +129,8 @@ def train_model(df):
             return None
         
         # Define features and target variable
-        features = ['dayofweek', 'month', 'year'] + [f'lag_{lag}' for lag in [1, 7, 14]] + ['rolling_mean_7']
+        features = ['dayofweek', 'month', 'year'] + [f'lag_{lag}' for lag in [1, 7, 14]] + ['rolling_mean_7', 'expanding_mean']
+
         target = 'target'
         
         X = df[features]
@@ -217,30 +220,32 @@ if uploaded_file is not None:
 
                 # Convert selected forecast date to datetime format
                 forecast_features = pd.DataFrame({
-                'dayofweek': [forecast_date.weekday()],  # Extract day of the week
-                'month': [forecast_date.month],  # Extract month
-                'year': [forecast_date.year]  # Extract year
-                })
+    'dayofweek': [forecast_date.weekday()],
+    'month': [forecast_date.month],
+    'year': [forecast_date.year]
+})
 
-                # Generate lag features based on the most recent available data
                 # Ensure lag features are correctly aligned with the forecast date
                 for lag in [1, 7, 14]:
                     lag_date = forecast_date - pd.Timedelta(days=lag)
-
-                    # Check if the lag date exists in the dataset
                     if lag_date in df['date'].values:
                         forecast_features[f'lag_{lag}'] = df.loc[df['date'] == lag_date, 'target'].values[0]
                     else:
-                        forecast_features[f'lag_{lag}'] = np.nan  # If the lag date is missing, fill with NaN
+                        forecast_features[f'lag_{lag}'] = np.nan  # If missing, fill with NaN
 
-
-                # Compute rolling mean based on available data up to the forecast date
-                historical_data = df[df['date'] < forecast_date].tail(7)  # Take last 7 values before the forecast date
+                # Compute rolling mean and expanding mean up to the forecast date
+                historical_data = df[df['date'] < forecast_date].tail(7)
+                expanding_data = df[df['date'] < forecast_date]
 
                 if len(historical_data) >= 7:
-                    forecast_features['rolling_mean_7'] = historical_data['target'].mean()  # Correct rolling mean calculation
+                    forecast_features['rolling_mean_7'] = historical_data['target'].mean()
                 else:
-                    forecast_features['rolling_mean_7'] = np.nan  # If insufficient history, fill with NaN
+                    forecast_features['rolling_mean_7'] = np.nan
+
+                if not expanding_data.empty:
+                    forecast_features['expanding_mean'] = expanding_data['target'].expanding().mean().iloc[-1]
+                else:
+                    forecast_features['expanding_mean'] = np.nan
 
 
                 # Drop any NaN values (this should be rare but ensures robustness)
