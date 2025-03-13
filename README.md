@@ -39,7 +39,7 @@ This code implements a **Time Series Forecasting** application using **XGBoost**
 - **Model Export**: Allows users to download the trained model for offline use.
 
 This application is ideal for users who want to perform time-series forecasting with minimal coding effort, leveraging the power of XGBoost and Streamlit's interactive capabilities.
-![App Screenshot](output/App_Screenshot.png)
+![App Screenshot](Output/App_Screenshot.png)
 
 ## Features
 - Upload a dataset with `date` and a target variable column
