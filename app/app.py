@@ -75,7 +75,6 @@ def preprocess_data(df, target_variable):
         df['rolling_mean_7'] = df['target'].rolling(window=7, min_periods=1).mean()
         df['expanding_mean'] = df['target'].expanding().mean()
 
-        
         # Drop rows with missing values after creating lags
         df = df.dropna()
         return df
@@ -107,15 +106,61 @@ def plot_predictions(df, forecast_date, prediction, target_variable):
     - Displays training data, test data, and the predicted value.
     """
     plt.figure(figsize=(12, 6))
+    
+    # Plot historical data (training data)
     sns.lineplot(data=df, x='date', y='target', label='Train Data', color='blue')
-    sns.lineplot(data=df.iloc[-len(df)//5:], x='date', y='target', label='Test Data', color='green')
+    
+    # Plot test data (last 20% of the dataset)
+    test_data = df.iloc[-len(df)//5:]  # Last 20% of the data
+    sns.lineplot(data=test_data, x='date', y='target', label='Test Data', color='green')
+    
+    # Plot the prediction point
     sns.scatterplot(x=[forecast_date], y=[prediction], color='red', s=150, label='Prediction', edgecolor='black', linewidth=1.5)
+    
+    # Add labels and title
     plt.xlabel("Date", fontsize=14)
     plt.ylabel(f"{target_variable} Value", fontsize=14)
     plt.title(f"{target_variable} Forecast on {forecast_date.date()}", fontsize=16, fontweight='bold')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.7)
     st.pyplot(plt)
+
+def generate_future_features(df, forecast_date):
+    """
+    Generate features for a specific forecast date (historical or future).
+    - df: The original dataframe with historical data.
+    - forecast_date: The date for which to generate features.
+    """
+    features = {
+        'date': forecast_date,
+        'dayofweek': forecast_date.weekday(),
+        'month': forecast_date.month,
+        'year': forecast_date.year
+    }
+    
+    # Generate lag features
+    for lag in [1, 7, 14]:
+        lag_date = forecast_date - pd.Timedelta(days=lag)
+        if lag_date in df['date'].values:
+            features[f'lag_{lag}'] = df.loc[df['date'] == lag_date, 'target'].values[0]
+        else:
+            features[f'lag_{lag}'] = np.nan  # If missing, fill with NaN
+    
+    # Generate rolling mean and expanding mean
+    historical_data = df[df['date'] < forecast_date].tail(7)
+    expanding_data = df[df['date'] < forecast_date]
+    
+    if len(historical_data) >= 7:
+        features['rolling_mean_7'] = historical_data['target'].mean()
+    else:
+        features['rolling_mean_7'] = np.nan
+    
+    if not expanding_data.empty:
+        features['expanding_mean'] = expanding_data['target'].expanding().mean().iloc[-1]
+    else:
+        features['expanding_mean'] = np.nan
+    
+    return pd.DataFrame([features])
 
 def train_model(df):
     """
@@ -130,7 +175,6 @@ def train_model(df):
         
         # Define features and target variable
         features = ['dayofweek', 'month', 'year'] + [f'lag_{lag}' for lag in [1, 7, 14]] + ['rolling_mean_7', 'expanding_mean']
-
         target = 'target'
         
         X = df[features]
@@ -208,65 +252,29 @@ if uploaded_file is not None:
             for param, value in st.session_state['best_params'].items():
                 st.write(f"- **{param.capitalize()}**: {value}")
             
-            # Allow user to select a forecast date
+            # Allow user to select a forecast date (up to 30 days into the future)
             min_date = df['date'].min().date()
             max_date = df['date'].max().date()
-            forecast_date = st.date_input("Select a forecast date", min_value=min_date, max_value=max_date)
+            future_max_date = max_date + pd.Timedelta(days=30)  # Extend the max date by 30 days
+            forecast_date = st.date_input("Select a forecast date", min_value=min_date, max_value=future_max_date)
             
             # Button to trigger prediction
             if st.button("Predict"):
                 model = st.session_state['model']
                 forecast_date = pd.to_datetime(forecast_date)
 
-                # Convert selected forecast date to datetime format
-                forecast_features = pd.DataFrame({
-    'dayofweek': [forecast_date.weekday()],
-    'month': [forecast_date.month],
-    'year': [forecast_date.year]
-})
-
-                # Ensure lag features are correctly aligned with the forecast date
-                for lag in [1, 7, 14]:
-                    lag_date = forecast_date - pd.Timedelta(days=lag)
-                    if lag_date in df['date'].values:
-                        forecast_features[f'lag_{lag}'] = df.loc[df['date'] == lag_date, 'target'].values[0]
-                    else:
-                        forecast_features[f'lag_{lag}'] = np.nan  # If missing, fill with NaN
-
-                # Compute rolling mean and expanding mean up to the forecast date
-                historical_data = df[df['date'] < forecast_date].tail(7)
-                expanding_data = df[df['date'] < forecast_date]
-
-                if len(historical_data) >= 7:
-                    forecast_features['rolling_mean_7'] = historical_data['target'].mean()
-                else:
-                    forecast_features['rolling_mean_7'] = np.nan
-
-                if not expanding_data.empty:
-                    forecast_features['expanding_mean'] = expanding_data['target'].expanding().mean().iloc[-1]
-                else:
-                    forecast_features['expanding_mean'] = np.nan
-
-
-                # Drop any NaN values (this should be rare but ensures robustness)
-                forecast_features = forecast_features.dropna(axis=1)
-
-                # Debugging: Show the generated features before prediction
-                st.write("### Debugging: Features Used for Prediction")
-                st.dataframe(forecast_features)
-
+                # Generate features for the selected forecast date
+                forecast_features = generate_future_features(df, forecast_date)
+                
                 # Make the prediction using the trained model
-                prediction = model.predict(forecast_features)
-
+                prediction = model.predict(forecast_features.drop(columns=['date']))
+                
                 # Display the predicted value
                 st.write(f"Predicted {target_variable} for {forecast_date.date()}: {prediction[0]:.2f}")
-
-                if prediction is not None:
-                    #st.write(f"Predicted {target_variable} for {forecast_date.date()}: {prediction[0]:.2f}")
-                    plot_predictions(df, forecast_date, prediction[0], target_variable)
-                else:
-                    st.error("Prediction failed. Check input data and try again.")
-
+                
+                # Plot the prediction
+                plot_predictions(df, forecast_date, prediction[0], target_variable)
+            
             # Allow user to download the trained model
             st.write("### Download Trained Model")
             with open("trained_model.xgb", "rb") as f:
