@@ -1,6 +1,6 @@
 # Streamlit Time Series Forecasting App
 
-This repository contains a Streamlit-based application for time series forecasting using XGBoost. It allows users to upload a CSV file, train a model, visualize the results, and make predictions.
+This repository contains a [**Streamlit-based application for time series forecasting using XGBoost**](https://kovalivska-streamlit-time-series-appapp-5riwmt.streamlit.app/). It allows users to upload a CSV file, train a model, visualize the results, and make predictions.
 
 ### Logic of the Code
 
